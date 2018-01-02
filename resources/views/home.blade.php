@@ -1,5 +1,11 @@
-@extends('app')
+@extends('layouts.app')
 
 @section('content')
-    <p>This is my body content.</p>
+<div class="container">
+    <div class="row">
+        <div class="col-md-12">
+            Deployer TODO
+        </div>
+    </div>
+</div>
 @endsection

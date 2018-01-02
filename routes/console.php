@@ -12,20 +12,28 @@
 */
 
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\NewUser;
 use App\User;
 
 Artisan::command('app:add-user {email} {name?}', function () {
+
     $email = $this->argument('email');
     $name = $this->argument('name');
-    $name = $name ? $name : '';
+    $name = $name ? $name : $email;
     $password = substr(md5(openssl_random_pseudo_bytes(100)), 0, 8);
-    User::create([
+
+    User::updateOrCreate([ 'email' => $email ],
+    [
         'name' => $name,
-        'email' => $email,
         'password' => Hash::make($password),
     ]);
+
     $this->comment('Created user:');
-    $this->comment('  name: ' . $name);
     $this->comment('  email: ' . $email);
+    $this->comment('  name: ' . $name);
     $this->comment('  password: ' . $password);
+
+    Mail::to($email)->send(new NewUser($email, $name, $password));
+
 })->describe('Add a user');

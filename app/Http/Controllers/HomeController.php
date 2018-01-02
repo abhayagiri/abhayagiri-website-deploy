@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Deploy;
 
 class HomeController extends Controller
 {
@@ -17,12 +18,24 @@ class HomeController extends Controller
     }
 
     /**
-     * Show the application dashboard.
+     * Show all the deployments.
      *
      * @return \Illuminate\Http\Response
      */
-    public function index()
+    public function index(Request $request)
     {
-        return view('home');
+        $deploys = Deploy::orderBy('started_at', 'desc')->get();
+        return view('home', ['deploys' => $deploys]);
+    }
+
+    /**
+     * Show a single deployment.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function showDeploy(Request $request, $id)
+    {
+        $deploy = Deploy::findOrFail($id);
+        return view('deploy', ['deploy' => $deploy]);
     }
 }

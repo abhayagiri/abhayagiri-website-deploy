@@ -81,7 +81,7 @@ for d in .composer .config .npm .ssh; do
 done
 sudo chmod 700 /var/www/.ssh
 sudo -u www-data ssh-keygen -t rsa -N '' -C '' -f /var/www/.ssh/id_rsa
-echo "GRANT ALL ON abhayagiri.* TO 'abhayagiri'@'localhost' IDENTIFIED BY 'abhayagiri';FLUSH PRIVILEGES;" | sudo mysql -u root
+echo "GRANT ALL ON deploy.* TO 'deploy'@'localhost' IDENTIFIED BY 'deploy';FLUSH PRIVILEGES;" | sudo mysql -u root
 sudo -u www-data php first-time-setup
 cat <<-EOF | sudo tee -a /etc/supervisor/conf.d/deploy.conf > /dev/null
 [program:deploy]

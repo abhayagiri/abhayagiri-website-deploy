@@ -1,7 +1,5 @@
 <?php
 
-use Illuminate\Foundation\Inspiring;
-
 /*
 |--------------------------------------------------------------------------
 | Console Routes
@@ -13,6 +11,21 @@ use Illuminate\Foundation\Inspiring;
 |
 */
 
-Artisan::command('inspire', function () {
-    $this->comment(Inspiring::quote());
-})->describe('Display an inspiring quote');
+use Illuminate\Support\Facades\Hash;
+use App\User;
+
+Artisan::command('app:add-user {email} {name?}', function () {
+    $email = $this->argument('email');
+    $name = $this->argument('name');
+    $name = $name ? $name : '';
+    $password = substr(md5(openssl_random_pseudo_bytes(100)), 0, 8);
+    User::create([
+        'name' => $name,
+        'email' => $email,
+        'password' => Hash::make($password),
+    ]);
+    $this->comment('Created user:');
+    $this->comment('  name: ' . $name);
+    $this->comment('  email: ' . $email);
+    $this->comment('  password: ' . $password);
+})->describe('Add a user');

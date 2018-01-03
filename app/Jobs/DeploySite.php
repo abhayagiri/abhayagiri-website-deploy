@@ -11,9 +11,9 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\Process\Process;
-use App\Deploy as DeployModel;
+use App\Site;
 
-class Deploy implements ShouldQueue
+class DeploySite implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -41,6 +41,6 @@ class Deploy implements ShouldQueue
      */
     public function handle()
     {
-        DeployModel::run($this->siteId);
+        Site::deploy($this->siteId);
     }
 }

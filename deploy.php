@@ -31,14 +31,16 @@ host('staging.abhayagiri.org')
     ->user('abhayagiri_staging')
     ->identityFile('~/.ssh/id_rsa')
     ->set('bin/php', '/usr/local/php70/bin/php')
-    ->set('deploy_path', '/home/abhayagiri_staging/staging.abhayagiri.org');
+    ->set('deploy_path', '/home/abhayagiri_staging/staging.abhayagiri.org')
+    ->set('local_build_path', 'storage/builds/staging');
 
 host('www.abhayagiri.org')
     ->stage('production')
     ->user('abhayagiri')
     ->identityFile('~/.ssh/id_rsa')
     ->set('bin/php', '/usr/local/php70/bin/php')
-    ->set('deploy_path', '/home/abhayagiri/www.abhayagiri.org');
+    ->set('deploy_path', '/home/abhayagiri/www.abhayagiri.org')
+    ->set('local_build_path', 'storage/builds/production');
 
 // /**
 //  * Main task
@@ -56,11 +58,9 @@ task('deploy', [
 after('deploy', 'success');
 
 task('deploy:upload-new-assets', function() {
-    runLocally('test -d storage/build || git clone https://github.com/abhayagiri/abhayagiri-website.git storage/build');
-    runLocally('cd storage/build && git pull');
-    runLocally('cd storage/build && npm install');
-    runLocally('cd storage/build && npm run build');
-    upload('storage/build/public/new/', '{{release_path}}/public/new');
+    runLocally('cd {{local_build_path}} && npm install');
+    runLocally('cd {{local_build_path}} && npm run build');
+    upload('{{local_build_path}}/public/new/', '{{release_path}}/public/new');
 })->desc('Upload New Assets');
 before('deploy:symlink', 'deploy:upload-new-assets');
 

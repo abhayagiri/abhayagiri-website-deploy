@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use App\Jobs\Deploy as DeployJob;
+use App\Jobs\DeploySite;
 use App\Deploy;
 use App\Site;
 
@@ -56,7 +56,7 @@ class HomeController extends Controller
     public function startDeploy(Request $request, $id)
     {
         $site = Site::findOrFail($id);
-        DeployJob::dispatch($site->id);
+        DeploySite::dispatch($site->id);
         $message = 'Starting ' . $site->name . ' deployment';
         return redirect(route('home'))->with('status', $message);
     }

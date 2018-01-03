@@ -13,7 +13,7 @@
                 <dd>{{ $deploy->started_at }}</dd>
                 <dt class="col-sm-3">Ended:</dt>
                 <dd>{{ $deploy->ended_at ? $deploy->ended_at : 'N/A' }}</dd>
-                <dt class="col-sm-3">status:</dt>
+                <dt class="col-sm-3">Status:</dt>
                 <dd>@include('status')</dd>
             </dl>
             <pre>{{ $deploy->log }}</pre>

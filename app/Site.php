@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Database\Eloquent\Model;
 use Symfony\Component\Process\Process;
+use App\Deploy;
 
 class Site extends Model
 {
@@ -14,7 +15,7 @@ class Site extends Model
 
     public function buildPath()
     {
-        return storage_path('builds/' . $this->id);
+        return storage_path('builds/' . $this->stage);
     }
 
     public function getRepositoryRevision()
@@ -43,7 +44,62 @@ class Site extends Model
         }
     }
 
-    static public function setLock($siteId)
+    static public function deploy($siteId)
+    {
+        $site = self::setLock($siteId);
+        if (!$site) {
+            Log::warning('Unable to obtain lock on site ' . $siteId);
+            return;
+        }
+        $site->updateRepository();
+        $revision = $site->getRepositoryRevision();
+        $deploy = Deploy::create([
+            'site_id' => $site->id,
+            'revision' => $revision,
+            'started_at' => Carbon::now(),
+        ]);
+        $deploy->revision = $revision;
+        $deploy->save();
+
+        $cmd = 'vendor/bin/dep deploy -vv ' . $site->stage;
+        $cmd = self::wrapTtyCommand($cmd);
+        Log::info('Starting deploy: ' . $cmd);
+        $timeout = config('deploy.timeout');
+        $process = new Process($cmd, base_path(), null, null, $timeout);
+        $process->run(function ($type, $buffer) use ($deploy) {
+            $deploy->log = $deploy->log . $buffer;
+            $deploy->save();
+        });
+        Log::info('Ending deploy: ' . $cmd);
+
+        $deploy->success = $process->isSuccessful();
+        $deploy->ended_at = Carbon::now();
+        $deploy->save();
+        self::releaseLock($site->id);
+        return $deploy->success;
+    }
+
+    /**
+     * Wrap a command to have deploy work under a non-TTY environment.
+     *
+     * See https://stackoverflow.com/questions/1401002/trick-an-application-into-thinking-its-stdin-is-interactive-not-a-pipe
+     *
+     * @param string
+     * @return string
+     */
+    static protected function wrapTtyCommand($cmd)
+    {
+        $process = new Process('script -V');
+        try {
+            $process->mustRun();
+            $cmd = 'script --return -c "' . $cmd . '" /dev/null';
+        } catch (\Exception $e) {
+        }
+        return $cmd;
+    }
+
+
+    static protected function setLock($siteId)
     {
         $site = self::lockForUpdate()
             ->where('id', '=', $siteId)
@@ -63,7 +119,7 @@ class Site extends Model
         }
     }
 
-    static public function releaseLock($siteId)
+    static protected function releaseLock($siteId)
     {
         $site = self::lockForUpdate()
             ->where('id', '=', $siteId)

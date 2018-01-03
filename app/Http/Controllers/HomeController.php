@@ -2,8 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use Carbon\Carbon;
 use Illuminate\Http\Request;
+use App\Jobs\Deploy as DeployJob;
 use App\Deploy;
+use App\Site;
 
 class HomeController extends Controller
 {
@@ -24,8 +27,14 @@ class HomeController extends Controller
      */
     public function index(Request $request)
     {
-        $deploys = Deploy::orderBy('started_at', 'desc')->get();
-        return view('home', ['deploys' => $deploys]);
+        $minDate = new Carbon('' . config('deploy.max_days') . ' days ago');
+        $deploys = Deploy::where('started_at', '>=', $minDate)
+            ->orderBy('started_at', 'desc')->get();
+        $sites = Site::orderBy('name')->get();
+        return view('home', [
+            'deploys' => $deploys,
+            'sites' => $sites,
+        ]);
     }
 
     /**
@@ -37,5 +46,18 @@ class HomeController extends Controller
     {
         $deploy = Deploy::findOrFail($id);
         return view('deploy', ['deploy' => $deploy]);
+    }
+
+    /**
+     * Start deployment.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function startDeploy(Request $request, $id)
+    {
+        $site = Site::findOrFail($id);
+        DeployJob::dispatch($site->id);
+        $message = 'Starting ' . $site->name . ' deployment';
+        return redirect(route('home'))->with('status', $message);
     }
 }

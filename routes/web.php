@@ -15,4 +15,5 @@ Auth::routes();
 
 Route::get('/', 'HomeController@index')->name('home');
 
-Route::get('/deploys/{id}', 'HomeController@showDeploy')->name('deploy');
+Route::get('/deploys/{id}', 'HomeController@showDeploy')->name('deploy.show');
+Route::post('/deploys/{id}/start', 'HomeController@startDeploy')->name('deploy.start');

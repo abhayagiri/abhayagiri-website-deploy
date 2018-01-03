@@ -67,7 +67,7 @@ class HomeController extends Controller
     {
         $site = Site::where('stage', 'staging')->firstOrFail();
         // Courtesy of https://gist.github.com/joemaller/e5e0b737a321d69ae2fc
-        $signature = '' . $request->header('HTTP_X_HUB_SIGNATURE');
+        $signature = $request->header('X-Hub-Signature', '');
         $payload = '' . $request->getContent();
         $secret = env('DEPLOYER_SECRET');
         $testSignature = 'sha1=' . hash_hmac('sha1', $payload, $secret);

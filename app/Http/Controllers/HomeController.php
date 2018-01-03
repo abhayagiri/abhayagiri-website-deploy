@@ -17,7 +17,9 @@ class HomeController extends Controller
      */
     public function __construct()
     {
-        $this->middleware('auth');
+        $this->middleware('auth', [
+            'except' => ['githubWebhook']
+        ]);
     }
 
     /**
@@ -59,5 +61,22 @@ class HomeController extends Controller
         DeploySite::dispatch($site->id);
         $message = 'Starting ' . $site->name . ' deployment';
         return redirect(route('home'))->with('status', $message);
+    }
+
+    public function githubWebhook(Request $request)
+    {
+        $site = Site::where('stage', 'staging')->firstOrFail();
+        // Courtesy of https://gist.github.com/joemaller/e5e0b737a321d69ae2fc
+        $signature = '' . $request->header('HTTP_X_HUB_SIGNATURE');
+        $payload = '' . $request->getContent();
+        $secret = env('DEPLOYER_SECRET');
+        $testSignature = 'sha1=' . hash_hmac('sha1', $payload, $secret);
+        $result = hash_equals($signature, $testSignature);
+        if ($result) {
+            DeploySite::dispatch($site->id);
+            return 'OK';
+        } else {
+            abort(500);
+        }
     }
 }

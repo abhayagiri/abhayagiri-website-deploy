@@ -23,7 +23,7 @@ Artisan::command('app:add-user {email} {name?}', function () {
     $name = $name ? $name : $email;
     $password = substr(md5(openssl_random_pseudo_bytes(100)), 0, 8);
 
-    User::updateOrCreate([ 'email' => $email ],
+    $user = User::updateOrCreate([ 'email' => $email ],
     [
         'name' => $name,
         'password' => Hash::make($password),
@@ -34,6 +34,6 @@ Artisan::command('app:add-user {email} {name?}', function () {
     $this->comment('  name: ' . $name);
     $this->comment('  password: ' . $password);
 
-    Mail::to($email)->send(new NewUser($email, $name, $password));
+    Mail::to($user)->send(new NewUser($email, $name, $password));
 
 })->describe('Add a user');

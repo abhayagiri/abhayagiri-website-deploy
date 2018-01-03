@@ -20,6 +20,13 @@ vendor/bin/dep deploy production
 vendor/bin/dep deploy:import-database staging
 ```
 
+## Add User (on deploy.abhayagiri.org)
+
+```sh
+cd /opt/deploy
+sudo -u www-data php artisan app:add-user <email> "<name>"
+```
+
 ## Install Deployer (on deploy.abhayagiri.org)
 
 As root:

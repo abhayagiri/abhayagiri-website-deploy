@@ -1,33 +1,48 @@
 # Abhayagiri Website Deployment
 
-## Install and Deploy Website
+Commands to be run on `deploy.abhayagiri.org`.
 
-Staging:
+## Manual Deploy
+
+Deploy to https://staging.abhayagiri.org/ (Staging):
 
 ```sh
-vendor/bin/dep deploy staging
+cd /opt/deploy
+sudo -u www-data vendor/bin/dep deploy staging
 ```
 
-Production:
+Deploy to https://www.abhayagiri.org/ (Production):
 
 ```sh
-vendor/bin/dep deploy production
+cd /opt/deploy
+sudo -u www-data vendor/bin/dep deploy production
 ```
 
 ## Import Database on Staging
 
 ```sh
-vendor/bin/dep deploy:import-database staging
+cd /opt/deploy
+sudo -u www-data vendor/bin/dep deploy:import-database staging
 ```
 
-## Add User (on deploy.abhayagiri.org)
+## Add User
 
 ```sh
 cd /opt/deploy
 sudo -u www-data php artisan app:add-user <email> "<name>"
 ```
 
-## Install Deployer (on deploy.abhayagiri.org)
+## Upgrade
+
+```sh
+cd /opt/deploy
+sudo -u www-data git pull
+sudo -u www-data composer install
+sudo -u www-data php artisan migrate --force
+sudo supervisorctl restart deploy:*
+```
+
+## First Install
 
 As root:
 
@@ -124,15 +139,5 @@ stdout_logfile=/opt/deploy/storage/logs/worker.log
 EOF
 sudo supervisorctl reread
 sudo supervisorctl update
-sudo supervisorctl restart deploy:*
-```
-
-## Upgrade (on deploy.abhayagiri.org)
-
-```sh
-cd /opt/deploy
-sudo -u www-data git pull
-sudo -u www-data composer install
-sudo -u www-data php artisan migrate --force
 sudo supervisorctl restart deploy:*
 ```

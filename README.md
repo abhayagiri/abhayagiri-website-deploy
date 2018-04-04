@@ -66,13 +66,12 @@ if ! test -d /root/.acme.sh; then
   curl https://get.acme.sh | sh
 fi
 systemctl stop nginx
-/root/.acme.sh/acme.sh --issue --standalone -d deploy.abhayagiri.org
+/root/.acme.sh/acme.sh --issue --standalone --httpport 88 --force -d deploy.abhayagiri.org
 mkdir -p /etc/nginx/certs/deploy.abhayagiri.org
 chmod 700 /etc/nginx/certs/deploy.abhayagiri.org
 acme.sh --install-cert -d deploy.abhayagiri.org \
   --key-file       /etc/nginx/certs/deploy.abhayagiri.org/key \
-  --fullchain-file /etc/nginx/certs/deploy.abhayagiri.org/fullchain \
-  --reloadcmd      "systemctl reload nginx"
+  --fullchain-file /etc/nginx/certs/deploy.abhayagiri.org/fullchain
 cat <<'EOF' > /etc/nginx/sites-available/deploy
 server {
     listen 80;
@@ -106,6 +105,10 @@ server {
 EOF
 ln -sf ../sites-available/deploy /etc/nginx/sites-enabled/deploy
 systemctl start nginx
+acme.sh --install-cert -d deploy.abhayagiri.org \
+  --key-file       /etc/nginx/certs/deploy.abhayagiri.org/key \
+  --fullchain-file /etc/nginx/certs/deploy.abhayagiri.org/fullchain \
+  --reloadcmd      "systemctl reload nginx"
 mkdir /opt/deploy
 chown www-data:www-data /opt/deploy
 sudo -u www-data git clone https://github.com/abhayagiri/abhayagiri-website-deploy /opt/deploy

@@ -58,6 +58,10 @@ task('deploy', [
 after('deploy', 'success');
 
 task('deploy:upload-new-assets', function() {
+    # Copy .env from remote (if possible).
+    $host = Task\Context::get()->getHost();
+    runLocally('scp ' . $host . ':{{deploy_path}}/shared/.env ' .
+               '{{local_build_path}}/.env || true');
     runLocally('cd {{local_build_path}} && npm install');
     runLocally('cd {{local_build_path}} && npm run build');
     upload('{{local_build_path}}/public/new/', '{{release_path}}/public/new');

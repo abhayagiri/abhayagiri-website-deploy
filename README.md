@@ -44,16 +44,25 @@ sudo supervisorctl restart abhayagiri-website-deploy:*
 
 ## First Deploy to `*.abhayagiri.org`
 
-Currently the PHP version is 7.3. This is mostly defined in the [Dreamhost
-panel](https://panel.dreamhost.com). In addition, you need to set the `PATH` in
-`$HOME/.bash_profile for the PHP binaries and composer:
+The project's PHP version is currently 7.3. The version used by web requests is
+defined in the [Dreamhost panel](https://panel.dreamhost.com).  In addition,
+you need to set the `PATH` in `$HOME/.bash_profile for the PHP binaries and
+composer:
 
 ```sh
 export PATH=/usr/local/php73/bin:$PATH
 export PATH=$HOME/.php/composer:$PATH
 ```
 
-Finally, due to some incompatibility in `preg` and 7.3 (see
+You'll also need to modify the user's crontab via `crontab -e` to enable
+scheduling:
+
+```
+MAILTO=""
+* * * * * cd /home/<username>/<subdomain>.abhayagiri.org/current && /usr/local/php73/bin/php artisan schedule:run >> /dev/null 2>&1
+```
+
+Finally, due to some incompatibility in `preg` and 7.3 (for context, see
 https://github.com/composer/composer/issues/7836), you will also need to add
 the following to `$HOME/.php/7.3/phprc`:
 

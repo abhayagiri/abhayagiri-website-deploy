@@ -7,39 +7,39 @@ Commands to be run on `deploy.abhayagiri.org`.
 Deploy to https://staging.abhayagiri.org/ (Staging):
 
 ```sh
-cd /opt/deploy
+cd /opt/abhayagiri-website-deploy
 sudo -u www-data vendor/bin/dep deploy staging
 ```
 
 Deploy to https://www.abhayagiri.org/ (Production):
 
 ```sh
-cd /opt/deploy
+cd /opt/abhayagiri-website-deploy
 sudo -u www-data vendor/bin/dep deploy production
 ```
 
 ## Import Database on Staging
 
 ```sh
-cd /opt/deploy
+cd /opt/abhayagiri-website-deploy
 sudo -u www-data vendor/bin/dep deploy:import-database staging
 ```
 
 ## Add User
 
 ```sh
-cd /opt/deploy
+cd /opt/abhayagiri-website-deploy
 sudo -u www-data php artisan app:add-user <email> "<name>"
 ```
 
 ## Upgrade
 
 ```sh
-cd /opt/deploy
+cd /opt/abhayagiri-website-deploy
 sudo -u www-data git pull
 sudo -u www-data composer install
 sudo -u www-data php artisan migrate --force
-sudo supervisorctl restart deploy:*
+sudo supervisorctl restart abhayagiri-website-deploy:*
 ```
 
 ## First Deploy to `*.abhayagiri.org`
@@ -95,20 +95,20 @@ sudo apt-get install -y \
 wget -O - -q https://getcomposer.org/installer | sudo php7.3 -- --install-dir=/usr/local/bin --filename=composer
 
 # Install nginx and supervisor
-apt-get install -y nginx php7.3-fpm supervisor
+sudo apt-get install -y nginx php7.3-fpm supervisor
 
 # Install acme.sh
-wget -O - -q https://get.acme.sh | sh
-mkdir -p /etc/nginx/certs/deploy.abhayagiri.org
-chmod 700 /etc/nginx/certs/deploy.abhayagiri.org
-/root/.acme.sh/acme.sh --issue --nginx \
+wget -O - -q https://get.acme.sh | sudo -i sh
+sudo mkdir -p /etc/nginx/certs/deploy.abhayagiri.org
+sudo chmod 700 /etc/nginx/certs/deploy.abhayagiri.org
+sudo /root/.acme.sh/acme.sh --issue --nginx \
     --key-file       /etc/nginx/certs/deploy.abhayagiri.org/key \
     --fullchain-file /etc/nginx/certs/deploy.abhayagiri.org/fullchain \
     --reloadcmd      "systemctl reload nginx" \
     --domain         deploy.abhayagiri.org
 
 # Configure nginx
-cat <<'EOF' > /etc/nginx/sites-available/deploy.abhayagiri.org
+cat <<'EOF' | sudo tee /etc/nginx/sites-available/deploy.abhayagiri.org > /dev/null
 server {
     listen 80;
     listen [::]:80;
@@ -140,19 +140,20 @@ server {
 }
 EOF
 
-ln -sf ../sites-available/deploy.abhayagiri.org /etc/nginx/sites-enabled/deploy.abhayagiri.org
-systemctl restart nginx
+sudo ln -sf ../sites-available/deploy.abhayagiri.org /etc/nginx/sites-enabled/deploy.abhayagiri.org
+sudo systemctl restart nginx
 
-mkdir /opt/abhayagiri-website-deploy
-chown www-data:www-data /opt/abhayagiri-website-deploy
+for d in .composer .config .npm .ssh; do
+  sudo -u www-data mkdir -p /var/www/$d
+done
+sudo -u www-data chmod 700 /var/www/.ssh
+
+sudo mkdir /opt/abhayagiri-website-deploy
+sudo chown www-data:www-data /opt/abhayagiri-website-deploy
 sudo -u www-data git clone https://github.com/abhayagiri/abhayagiri-website-deploy /opt/abhayagiri-website-deploy
 cd /opt/abhayagiri-website-deploy
-for d in .composer .config .npm .ssh; do
-  mkdir -p /var/www/$d
-done
-chmod 700 /var/www/.ssh
 sudo -u www-data ssh-keygen -t rsa -N '' -C '' -f /var/www/.ssh/id_rsa
-echo "DROP DATABASE IF EXISTS deploy; CREATE DATABASE deploy CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; GRANT ALL ON deploy.* TO 'deploy'@'localhost' IDENTIFIED BY 'deploy'; FLUSH PRIVILEGES;" | mysql -u root
+echo "DROP DATABASE IF EXISTS deploy; CREATE DATABASE deploy CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; GRANT ALL ON deploy.* TO 'deploy'@'localhost' IDENTIFIED BY 'deploy'; FLUSH PRIVILEGES;" | sudo mysql -u root
 sudo -u www-data composer install
 sudo -u www-data php artisan migrate --force
 sudo -u www-data cp .env.example .env
@@ -163,7 +164,7 @@ sudo -u www-data php artisan key:generate
 Modify `.env` accordingly. Then:
 
 ```sh
-cat <<-EOF > /etc/supervisor/conf.d/abhayagiri-website-deploy.conf
+cat <<-EOF | sudo tee /etc/supervisor/conf.d/abhayagiri-website-deploy.conf > /dev/null
 [program:abhayagiri-website-deploy]
 process_name=%(program_name)s_%(process_num)02d
 command=php7.3 /opt/abhayagiri-website-deploy/artisan queue:work --sleep=3 --tries=3

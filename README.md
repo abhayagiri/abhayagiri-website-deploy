@@ -42,37 +42,73 @@ sudo -u www-data php artisan migrate --force
 sudo supervisorctl restart deploy:*
 ```
 
-## First Install
+## First Deploy to `*.abhayagiri.org`
 
-As root:
+Currently the PHP version is 7.3. This is mostly defined in the [Dreamhost
+panel](https://panel.dreamhost.com). In addition, you need to set the `PATH` in
+`$HOME/.bash_profile for the PHP binaries and composer:
 
 ```sh
-apt-get update
-apt-get install -y curl software-properties-common dirmngr
-apt-key adv --recv-keys --keyserver keyserver.ubuntu.com 0xF1656F24C74CD1D8
-add-apt-repository 'deb [arch=amd64] http://sfo1.mirrors.digitalocean.com/mariadb/repo/10.2/debian stretch main'
-apt-get update
-apt-get install -y git mariadb-client mariadb-server nodejs \
-  php7.0 php7.0-bz2 php7.0-curl php7.0-gd php7.0-opcache \
-  php7.0-mbstring php7.0-mysql php7.0-xml php7.0-zip
-curl -sL https://deb.nodesource.com/setup_8.x | bash -
-if ! test -f /usr/local/bin/composer; then
-  curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
-else
-  /usr/local/bin/composer self-update
-fi
-apt-get install -y nginx php7.0-fpm supervisor
-if ! test -d /root/.acme.sh; then
-  curl https://get.acme.sh | sh
-fi
-systemctl stop nginx
-/root/.acme.sh/acme.sh --issue --standalone --httpport 88 --force -d deploy.abhayagiri.org
+export PATH=/usr/local/php73/bin:$PATH
+export PATH=$HOME/.php/composer:$PATH
+```
+
+Finally, due to some incompatibility in `preg` and 7.3 (see
+https://github.com/composer/composer/issues/7836), you will also need to add
+the following to `$HOME/.php/7.3/phprc`:
+
+```
+pcre.jit=0
+```
+
+## First Install on `deploy.abhayagiri.org`
+
+The following are run to setup the server on `deploy.abhayagiri.org`.  As root:
+
+```sh
+# Install Dependencies
+sudo apt-get update
+sudo apt-get install -y apt-transport-https ca-certificates dirmngr git \
+    lsb-release software-properties-common unzip zip
+
+# Install MariaDB
+sudo apt-key adv --recv-keys --keyserver keyserver.ubuntu.com 0xF1656F24C74CD1D8
+distribution="$(lsb_release -si | tr '[:upper:]' '[:lower:]')"
+codename="$(lsb_release -sc)"
+echo "deb [arch=amd64,i386,ppc64el] http://sfo1.mirrors.digitalocean.com/mariadb/repo/10.3/$distribution $codename main" | sudo tee /etc/apt/sources.list.d/mariadb.list > /dev/null
+sudo apt-get update
+sudo DEBIAN_FRONTEND=noninteractive apt-get install -y mariadb-client mariadb-server
+
+# Install NodeJS
+wget -O - -q https://deb.nodesource.com/setup_12.x | sudo -E bash -
+sudo apt-get install -y nodejs
+
+# Install PHP 7.3
+wget -O /etc/apt/trusted.gpg.d/php.gpg https://packages.sury.org/php/apt.gpg
+sudo bash -c 'echo "deb https://packages.sury.org/php/ $(lsb_release -sc) main" > /etc/apt/sources.list.d/php.list'
+sudo apt-get update
+sudo apt-get install -y \
+    php7.3 php7.3-bz2 php7.3-curl php7.3-gd php7.3-opcache \
+    php7.3-mbstring php7.3-mysql php7.3-xml php7.3-zip
+
+# Install Composer
+wget -O - -q https://getcomposer.org/installer | sudo php7.3 -- --install-dir=/usr/local/bin --filename=composer
+
+# Install nginx and supervisor
+apt-get install -y nginx php7.3-fpm supervisor
+
+# Install acme.sh
+wget -O - -q https://get.acme.sh | sh
 mkdir -p /etc/nginx/certs/deploy.abhayagiri.org
 chmod 700 /etc/nginx/certs/deploy.abhayagiri.org
-acme.sh --install-cert -d deploy.abhayagiri.org \
-  --key-file       /etc/nginx/certs/deploy.abhayagiri.org/key \
-  --fullchain-file /etc/nginx/certs/deploy.abhayagiri.org/fullchain
-cat <<'EOF' > /etc/nginx/sites-available/deploy
+/root/.acme.sh/acme.sh --issue --nginx \
+    --key-file       /etc/nginx/certs/deploy.abhayagiri.org/key \
+    --fullchain-file /etc/nginx/certs/deploy.abhayagiri.org/fullchain \
+    --reloadcmd      "systemctl reload nginx" \
+    --domain         deploy.abhayagiri.org
+
+# Configure nginx
+cat <<'EOF' > /etc/nginx/sites-available/deploy.abhayagiri.org
 server {
     listen 80;
     listen [::]:80;
@@ -86,7 +122,7 @@ server {
     server_name deploy.abhayagiri.org;
     ssl_certificate /etc/nginx/certs/deploy.abhayagiri.org/fullchain;
     ssl_certificate_key /etc/nginx/certs/deploy.abhayagiri.org/key;
-    root /opt/deploy/public;
+    root /opt/abhayagiri-website-deploy/public;
     index index.php index.html index.htm;
 
     location / {
@@ -96,26 +132,23 @@ server {
     location ~ \.php$ {
         try_files $uri /index.php =404;
         fastcgi_split_path_info ^(.+\.php)(/.+)$;
-        fastcgi_pass unix:/var/run/php/php7.0-fpm.sock;
+        fastcgi_pass unix:/var/run/php/php7.3-fpm.sock;
         fastcgi_index index.php;
         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
         include fastcgi_params;
     }
 }
 EOF
-ln -sf ../sites-available/deploy /etc/nginx/sites-enabled/deploy
-systemctl start nginx
-acme.sh --install-cert -d deploy.abhayagiri.org \
-  --key-file       /etc/nginx/certs/deploy.abhayagiri.org/key \
-  --fullchain-file /etc/nginx/certs/deploy.abhayagiri.org/fullchain \
-  --reloadcmd      "systemctl reload nginx"
-mkdir /opt/deploy
-chown www-data:www-data /opt/deploy
-sudo -u www-data git clone https://github.com/abhayagiri/abhayagiri-website-deploy /opt/deploy
-cd /opt/deploy
+
+ln -sf ../sites-available/deploy.abhayagiri.org /etc/nginx/sites-enabled/deploy.abhayagiri.org
+systemctl restart nginx
+
+mkdir /opt/abhayagiri-website-deploy
+chown www-data:www-data /opt/abhayagiri-website-deploy
+sudo -u www-data git clone https://github.com/abhayagiri/abhayagiri-website-deploy /opt/abhayagiri-website-deploy
+cd /opt/abhayagiri-website-deploy
 for d in .composer .config .npm .ssh; do
   mkdir -p /var/www/$d
-  chown www-data:www-data /var/www/$d
 done
 chmod 700 /var/www/.ssh
 sudo -u www-data ssh-keygen -t rsa -N '' -C '' -f /var/www/.ssh/id_rsa
@@ -123,24 +156,25 @@ echo "DROP DATABASE IF EXISTS deploy; CREATE DATABASE deploy CHARACTER SET utf8m
 sudo -u www-data composer install
 sudo -u www-data php artisan migrate --force
 sudo -u www-data cp .env.example .env
+sudo -u www-data chmod 640 .env
 sudo -u www-data php artisan key:generate
 ```
 
 Modify `.env` accordingly. Then:
 
-```
-cat <<-EOF > /etc/supervisor/conf.d/deploy.conf
-[program:deploy]
+```sh
+cat <<-EOF > /etc/supervisor/conf.d/abhayagiri-website-deploy.conf
+[program:abhayagiri-website-deploy]
 process_name=%(program_name)s_%(process_num)02d
-command=php /opt/deploy/artisan queue:work --sleep=3 --tries=3
+command=php7.3 /opt/abhayagiri-website-deploy/artisan queue:work --sleep=3 --tries=3
 autostart=true
 autorestart=true
 user=www-data
 numprocs=2
 redirect_stderr=true
-stdout_logfile=/opt/deploy/storage/logs/worker.log
+stdout_logfile=/opt/abhayagiri-website-deploy/storage/logs/worker.log
 EOF
 sudo supervisorctl reread
 sudo supervisorctl update
-sudo supervisorctl restart deploy:*
+sudo supervisorctl restart abhayagiri-website-deploy:*
 ```

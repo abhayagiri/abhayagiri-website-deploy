@@ -30,7 +30,7 @@ host('staging.abhayagiri.org')
     ->stage('staging')
     ->user('abhayagiri_staging')
     ->identityFile('~/.ssh/id_rsa')
-    ->set('bin/php', '/usr/local/php71/bin/php')
+    ->set('bin/php', '/usr/local/php73/bin/php')
     ->set('deploy_path', '/home/abhayagiri_staging/staging.abhayagiri.org')
     ->set('local_build_path', 'storage/builds/staging');
 
@@ -38,7 +38,7 @@ host('www.abhayagiri.org')
     ->stage('production')
     ->user('abhayagiri')
     ->identityFile('~/.ssh/id_rsa')
-    ->set('bin/php', '/usr/local/php71/bin/php')
+    ->set('bin/php', '/usr/local/php73/bin/php')
     ->set('deploy_path', '/home/abhayagiri/www.abhayagiri.org')
     ->set('local_build_path', 'storage/builds/production');
 
@@ -74,7 +74,7 @@ task('deploy:stamp', function() {
 after('deploy:upload-new-assets', 'deploy:stamp');
 
 task('deploy:restart-php-processes', function() {
-    run('killall php71.cgi || true');
+    run('killall php73.cgi || true');
 })->desc('Restart PHP processes');
 after('deploy:symlink', 'deploy:restart-php-processes');
 
